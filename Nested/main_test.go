@@ -7,48 +7,56 @@ import (
 
 func Test(t *testing.T) {
 	type testCase struct {
-		emp      employee
-		expected int
+		messageIn string
+		expected  string
 	}
 
 	runCases := []testCase{
-		{fullTime{name: "Bob", salary: 7300}, 7300},
-		{contractor{name: "Jill", hourlyPay: 872, hoursPerYear: 982}, 856304},
+		{
+			"English, motherfubber, do you speak it?",
+			"English, mother****er, do you speak it?",
+		},
+		{
+			"Oh man I've seen some crazy ass shiz in my time...",
+			"Oh man I've seen some crazy ass **** in my time...",
+		},
 	}
 
 	submitCases := append(runCases, []testCase{
-		{fullTime{name: "Alice", salary: 10000}, 10000},
-		{contractor{name: "John", hourlyPay: 1000, hoursPerYear: 1000}, 1000000},
+		{
+			"Does he look like a witch?",
+			"Does he look like a *****?",
+		},
 	}...)
 
 	testCases := runCases
 	if withSubmit {
 		testCases = submitCases
 	}
-
 	skipped := len(submitCases) - len(testCases)
 
 	passCount := 0
 	failCount := 0
 
 	for _, test := range testCases {
-		salary := test.emp.getSalary()
-		if salary != test.expected {
+		original := test.messageIn
+		removeProfanity(&test.messageIn)
+		if test.messageIn != test.expected {
 			failCount++
 			t.Errorf(`---------------------------------
-Inputs:     %+v
-Expecting:  %v
-Actual:     %v
-Fail
-`, test.emp, test.expected, salary)
+Test Failed:
+  input:    %v
+  expected: %v
+  actual:   %v
+`, original, test.expected, test.messageIn)
 		} else {
 			passCount++
 			fmt.Printf(`---------------------------------
-Inputs:     %+v
-Expecting:  %v
-Actual:     %v
-Pass
-`, test.emp, test.expected, salary)
+Test Passed:
+  input:    %v
+  expected: %v
+  actual:   %v
+`, original, test.expected, test.messageIn)
 		}
 	}
 
