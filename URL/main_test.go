@@ -2,24 +2,23 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 )
 
 func Test(t *testing.T) {
 	type testCase struct {
-		email string
-		count int
+		email    string
+		expected string
 	}
 
 	runCases := []testCase{
-		{"norman@bates.com", 23},
-		{"marion@bates.com", 67},
+		{"wayne.lagner@dev.boot", "mailto:wayne.lagner@dev.boot"},
+		{"heckmann@what.de", "mailto:heckmann@what.de"},
+		{"a.liar@pants.fire", "mailto:a.liar@pants.fire"},
 	}
 
 	submitCases := append(runCases, []testCase{
-		{"lila@bates.com", 31},
-		{"sam@bates.com", 453},
+		{"", "mailto:"},
 	}...)
 
 	testCases := runCases
@@ -33,38 +32,23 @@ func Test(t *testing.T) {
 	failCount := 0
 
 	for _, test := range testCases {
-		sc := safeCounter{
-			counts: make(map[string]int),
-			mu:     &sync.Mutex{},
-		}
-		var wg sync.WaitGroup
-		for i := 0; i < test.count; i++ {
-			wg.Add(1)
-			go func(email string) {
-				sc.inc(email)
-				wg.Done()
-			}(test.email)
-		}
-		wg.Wait()
-
-		if output := sc.val(test.email); output != test.count {
+		output := getMailtoLinkForEmail(test.email)
+		if output != test.expected {
 			failCount++
 			t.Errorf(`---------------------------------
-Test Failed:
-  email: %v
-  count: %v
-  expected count: %v
-  actual count:   %v
-`, test.email, test.count, test.count, output)
+Email:		%v
+Expecting:  %v
+Actual:     %v
+Fail
+`, test.email, test.expected, output)
 		} else {
 			passCount++
 			fmt.Printf(`---------------------------------
-Test Passed:
-  email: %v
-  count: %v
-  expected count: %v
-  actual count:   %v
-`, test.email, test.count, test.count, output)
+Email:		%v
+Expecting:  %v
+Actual:     %v
+Pass
+`, test.email, test.expected, output)
 		}
 	}
 
