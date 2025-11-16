@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"sync/atomic"
+
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
@@ -20,16 +22,16 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf(`
-<html>
+	fmt.Fprintf(w, `
+			<html>
 
-<body>
-	<h1>Welcome, Chirpy Admin</h1>
-	<p>Chirpy has been visited %d times!</p>
-</body>
+			<body>
+				<h1>Welcome, Chirpy Admin</h1>
+				<p>Chirpy has been visited %d times!</p>
+			</body>
 
-</html>
-	`, cfg.fileserverHits.Load())))
+			</html>
+	`, cfg.fileserverHits.Load())
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
