@@ -28,8 +28,8 @@ func main() {
 		}
 	}
 
-	// if len(s) != 0 {
-	// 	fmt.Printf("Read : %s\n", s)
-	// }
+	if len(s) != 0 {
+		fmt.Printf("read : %s\n", s)
+	}
 
 }
