@@ -2,35 +2,55 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"strings"
+	"time"
 )
 
-func main() {
-	// fmt.Println("I hope I get the job!")
-	file, err := os.Open("message.txt")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	// var s string
-	for {
-		newBytes := make([]byte, 8)
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	channel := make(chan string)
 
-		_, err := file.Read(newBytes)
-		if err != nil {
-			break
+	go func() {
+		defer f.Close()
+
+		var s string
+
+		for {
+			newBytes := make([]byte, 8)
+			_, err := f.Read(newBytes)
+			if err != nil {
+				break
+			}
+			s += string(newBytes)
+			if i := strings.Index(s, "\n"); i != -1 {
+
+				channel <- s[:i]
+				s = s[i+1:]
+			}
+			// time.Sleep(200 * time.Millisecond)
 		}
-		// s += string(newBytes)
-		// if i := strings.Index(s, "\n"); i != -1 {
 
-		// 	fmt.Printf("read : %s\n", s[:i])
-		// 	s = s[i+1:]
-		// }
-		fmt.Printf("read : %s\n", string(newBytes))
+		if len(s) != 0 {
+			channel <- s
+		}
+		close(channel)
+	}()
+
+	return channel
+
+}
+func main() {
+	file, err := os.Open("message.txt")
+
+	if err != nil {
+		log.Fatal(err)
 	}
+	channel := getLinesChannel(file)
 
-	// if len(s) != 0 {
-	// 	fmt.Printf("read : %s\n", s)
-	// }
+	for line := range channel {
+		fmt.Printf("read: %s\n", line)
+	}
 
 }
