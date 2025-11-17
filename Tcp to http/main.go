@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	fmt.Println("I hope I get the job!")
+	// fmt.Println("I hope I get the job!")
 	file, err := os.Open("message.txt")
 	if err != nil {
 		fmt.Println(err)
@@ -23,13 +23,13 @@ func main() {
 		s += string(newBytes)
 		if i := strings.Index(s, "\n"); i != -1 {
 
-			fmt.Printf("Read : %s\n", s[:i])
+			fmt.Printf("read : %s\n", s[:i])
 			s = s[i+1:]
 		}
 	}
 
-	if len(s) != 0 {
-		fmt.Printf("Read : %s\n", s)
-	}
+	// if len(s) != 0 {
+	// 	fmt.Printf("Read : %s\n", s)
+	// }
 
 }
