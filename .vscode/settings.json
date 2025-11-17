@@ -1,6 +1,6 @@
 {
-    "code-runner.executorMap": {
-        "go": "cd $dir && go test -v",
-    },
+    // "code-runner.executorMap": {
+    //     "go": "cd $dir && go test -v",
+    // },
     "editor.guides.bracketPairs": false
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -12,19 +13,23 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	newBytes := make([]byte, 8)
-	data := make([]byte, 0)
-
+	var s string
 	for {
+		newBytes := make([]byte, 8)
 		_, err := file.Read(newBytes)
 		if err != nil {
-			fmt.Println(err)
 			break
 		}
-		data = append(data, newBytes...)
-		fmt.Println(string(newBytes))
+		s += string(newBytes)
+		if i := strings.Index(s, "\n"); i != -1 {
+
+			fmt.Printf("Read : %s\n", s[:i])
+			s = s[i+1:]
+		}
 	}
 
-	fmt.Print(string(data))
+	if len(s) != 0 {
+		fmt.Printf("Read : %s\n", s)
+	}
 
 }
