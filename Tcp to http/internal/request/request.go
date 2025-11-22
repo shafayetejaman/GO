@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -37,7 +38,7 @@ type RequestLine struct {
 
 const CRLF = "\r\n"
 
-func (r *Request) parse(data []byte, eof bool) (int, error) {
+func (r *Request) parse(data []byte) (int, error) {
 	for {
 		switch r.State {
 		case StateDone:
@@ -56,7 +57,6 @@ func (r *Request) parse(data []byte, eof bool) (int, error) {
 			return n, nil
 
 		case StateParsingHeaders:
-			// slog.Info("stateParheer#66", "data", data)
 
 			n, done, err := r.Headers.Parse(data)
 
@@ -80,26 +80,31 @@ func (r *Request) parse(data []byte, eof bool) (int, error) {
 			return n, nil
 
 		case StateParseBody:
-			currBodyLen := len(data)
+			currDataLen := len(data)
+			slog.Info("statebody", "data", data, "bodyLen", r.BodyLen)
 
-			if r.BodyLen == -1 && currBodyLen > 0 {
-				return 0, errors.New("the body is too big")
+			if r.BodyLen == -1 && currDataLen > 0 {
+				return 0, errors.New("content length not found")
 			}
 
-			if r.BodyLen == -1 || (r.BodyLen == 0 && currBodyLen == 0) {
+			if currDataLen == 0 {
+				if r.BodyLen > 0 {
+					return 0, errors.New("missing body")
+
+				}
 				r.State = StateDone
 				return 0, nil
 			}
 
-			if r.BodyLen > 0 && len(data) <= 0 && eof {
+			if r.BodyLen == 0 && currDataLen > 0 {
+				return 0, errors.New("the body is too big")
 
-				return 0, errors.New("missing body")
 			}
+			read := min(r.BodyLen, currDataLen)
+			r.Body = append(r.Body, data[:read]...)
+			r.BodyLen -= read
 
-			r.Body = append(r.Body, data...)
-			r.BodyLen -= len(data)
-
-			return len(data), nil
+			return read, nil
 
 		default:
 			log.Fatal("state dose not match")
@@ -173,7 +178,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		BodyLen: -1}
 	buffer := make([]byte, 8)
 	read := 0
-	var isEOF bool
+	isEOF := false
 
 	for !req.done() {
 		var n int
@@ -187,7 +192,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			n, err = reader.Read(buffer[read:])
 			if err != nil {
 				if err == io.EOF {
-					println(err)
 					isEOF = true
 				} else {
 					return nil, err
@@ -195,7 +199,8 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			}
 		}
 		read += n
-		n, err = req.parse(buffer[:read], isEOF)
+		slog.Info("readFom", "data", buffer[:read], "iseof", isEOF)
+		n, err = req.parse(buffer[:read])
 		if err != nil {
 			return nil, err
 		}
