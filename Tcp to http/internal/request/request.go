@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"log"
-	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,16 +17,15 @@ type Request struct {
 	Headers     headers.Headers
 	State       State
 	Body        []byte
-	BodyLen     int
 }
 
 type State int
 
 const (
 	StateInitialized State = iota
-	StateDone
 	StateParsingHeaders
 	StateParseBody
+	StateDone
 )
 
 type RequestLine struct {
@@ -38,14 +36,33 @@ type RequestLine struct {
 
 const CRLF = "\r\n"
 
+func (r *Request) getContentLen() int {
+	contentLen := r.Headers.Get("Content-Length")
+
+	if contentLen == "" {
+		return 0
+	}
+
+	n, err := strconv.Atoi(contentLen)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
 func (r *Request) parse(data []byte) (int, error) {
+
+	read := 0
 	for {
 		switch r.State {
 		case StateDone:
-			return 0, nil
+			return read, nil
 
 		case StateInitialized:
-			reqLine, n, err := parseRequestLine(data)
+			reqLine, n, err := parseRequestLine(data[read:])
 			if err != nil {
 				return 0, err
 			}
@@ -54,62 +71,54 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 			r.RequestLine = reqLine
 			r.State = StateParsingHeaders
-			return n, nil
+			read += n
 
 		case StateParsingHeaders:
-
-			n, done, err := r.Headers.Parse(data)
+			// slog.Info("header", "data", data[read:], "read", read)
+			n, done, err := r.Headers.Parse(data[read:])
 
 			if err != nil {
 				return 0, err
 			}
+			read += n
 			if !done {
-				return n, nil
-			}
-			r.State = StateParseBody
-			contentLen := r.Headers.Get("Content-Length")
-
-			if contentLen != "" {
-				n, err := strconv.Atoi(contentLen)
-				if err != nil {
-					return 0, err
-				}
-				r.BodyLen = n
+				return read, nil
 			}
 
-			return n, nil
+			if r.getContentLen() > 0 {
+				r.State = StateParseBody
+
+			} else {
+				r.State = StateDone
+			}
 
 		case StateParseBody:
-			currDataLen := len(data)
-			slog.Info("statebody", "data", data, "bodyLen", r.BodyLen)
+			currData := data[read:]
+			// too much data
+			if len(r.Body)+len(currData) > r.getContentLen() {
+				return 0, errors.New("too much data data")
 
-			if r.BodyLen == -1 && currDataLen > 0 {
-				return 0, errors.New("content length not found")
+			}
+			// body missing
+			if len(currData) == 0 && len(data) == 0 {
+				return 0, errors.New("not enough data")
+			}
+			// more data need
+			if len(currData) == 0 {
+				return read, nil
 			}
 
-			if currDataLen == 0 {
-				if r.BodyLen > 0 {
-					return 0, errors.New("missing body")
+			n := min(r.getContentLen()-len(r.Body), len(currData))
+			r.Body = append(r.Body, currData[:n]...)
+			read += n
 
-				}
+			if len(r.Body) == r.getContentLen() {
 				r.State = StateDone
-				return 0, nil
 			}
-
-			if r.BodyLen == 0 && currDataLen > 0 {
-				return 0, errors.New("the body is too big")
-
-			}
-			read := min(r.BodyLen, currDataLen)
-			r.Body = append(r.Body, data[:read]...)
-			r.BodyLen -= read
-
-			return read, nil
 
 		default:
 			log.Fatal("state dose not match")
 		}
-
 	}
 }
 
@@ -174,11 +183,10 @@ func isAssci(s string) bool {
 }
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	req := Request{State: StateInitialized,
-		Headers: *headers.NewHeaders(),
-		BodyLen: -1}
-	buffer := make([]byte, 8)
+		Headers: *headers.NewHeaders()}
+
+	buffer := make([]byte, 1024)
 	read := 0
-	isEOF := false
 
 	for !req.done() {
 		var n int
@@ -188,18 +196,12 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			copy(newBuffer, buffer)
 			buffer = newBuffer
 		}
-		if !isEOF {
-			n, err = reader.Read(buffer[read:])
-			if err != nil {
-				if err == io.EOF {
-					isEOF = true
-				} else {
-					return nil, err
-				}
-			}
+
+		n, err = reader.Read(buffer[read:])
+		if err != nil {
+			return nil, err
 		}
 		read += n
-		slog.Info("readFom", "data", buffer[:read], "iseof", isEOF)
 		n, err = req.parse(buffer[:read])
 		if err != nil {
 			return nil, err
@@ -208,6 +210,5 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		read -= n
 
 	}
-
 	return &req, nil
 }

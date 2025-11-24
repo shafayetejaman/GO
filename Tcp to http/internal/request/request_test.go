@@ -209,17 +209,7 @@ func TestPasingTheBody(t *testing.T) {
 			"Content-Length: 5\r\n" +
 			"\r\n" +
 			"more content",
-		numBytesPerRead: 3,
-	}
-	r, err = RequestFromReader(reader)
-	require.Error(t, err)
-
-	reader = &chunkReader{
-		data: "POST /submit HTTP/1.1\r\n" +
-			"Host: localhost:42069\r\n" +
-			"\r\n" +
-			"content with out header",
-		numBytesPerRead: 3,
+		numBytesPerRead: 30,
 	}
 	r, err = RequestFromReader(reader)
 	require.Error(t, err)

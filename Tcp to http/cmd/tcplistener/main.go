@@ -58,7 +58,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		fmt.Printf("Request line:\n - Method: %v\n - Target: %v\n - Version: %v\n Headers:\n",
 			req.RequestLine.Method,
 			req.RequestLine.RequestTarget,
@@ -66,6 +65,7 @@ func main() {
 		for key, val := range req.Headers.Headers {
 			fmt.Printf("- %v: %v\n", key, val)
 		}
+		fmt.Printf("Body:\n%v\n", string(req.Body))
 		cnn.Close()
 	}
 

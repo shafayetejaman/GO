@@ -20,9 +20,9 @@ func (h *Headers) Get(key string) string {
 func (h *Headers) Set(key, val string) {
 	key = strings.ToLower(key)
 
-	if oldVal, ok := h.Headers[key]; ok {
-		val = oldVal + "," + val
-	}
+	// if oldVal, ok := h.Headers[key]; ok {
+	// 	val = oldVal + "," + val
+	// }
 	h.Headers[key] = val
 }
 
@@ -48,7 +48,7 @@ func isTChar(s string) bool {
 
 func ParseHeader(headerLine string) (string, string, error) {
 	firstColonIdx := strings.Index(headerLine, ":")
-
+	// println(headerLine)k
 	if firstColonIdx == -1 {
 		return "", "", errors.New("missing : in header")
 	}
